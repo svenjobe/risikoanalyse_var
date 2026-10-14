@@ -58,3 +58,20 @@ def monte_carlo_returns(
     draws = rng.multivariate_normal(mu, cov, size=(n_sims, horizon))
     daily_port = draws @ w                                            
     return np.prod(1.0 + daily_port, axis=1) - 1.0
+
+def drawdown_series(returns: pd.Series) -> pd.Series:
+    wealth = (1.0 + returns).cumprod()
+    return wealth / wealth.cummax() - 1.0
+
+
+def max_drawdown(returns: pd.Series) -> float:
+    return float(drawdown_series(returns).min())
+
+
+def longest_underwater_days(returns: pd.Series) -> int:
+    dd = drawdown_series(returns)
+    underwater = dd < 0
+    if not underwater.any():
+        return 0
+    groups = (~underwater).cumsum()
+    return int(underwater.groupby(groups).sum().max())

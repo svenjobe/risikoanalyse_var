@@ -10,6 +10,9 @@ from src.risk import (
     parametric_es,
     parametric_var,
     portfolio_returns,
+    drawdown_series,
+    max_drawdown,
+    longest_underwater_days
 )
 
 
@@ -56,3 +59,15 @@ def test_monte_carlo_var_close_to_parametric_for_one_day():
     port = portfolio_returns(df, weights)
     sims = monte_carlo_returns(df, weights, horizon=1, n_sims=100_000, seed=0)
     assert historical_var(sims, 0.95) == pytest.approx(parametric_var(port, 0.95), rel=0.08)
+
+def test_drawdown_known_path():
+    r = pd.Series([0.10, -0.50, 0.20])
+    assert max_drawdown(r) == pytest.approx(-0.5)
+    dd = drawdown_series(r)
+    assert dd.iloc[0] == pytest.approx(0.0)
+    assert dd.iloc[2] == pytest.approx(0.66 / 1.1 - 1.0)
+
+
+def test_longest_underwater_days():
+    r = pd.Series([0.10, -0.05, 0.01, 0.01, 0.10])
+    assert longest_underwater_days(r) == 3
