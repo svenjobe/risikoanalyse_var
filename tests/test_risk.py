@@ -5,6 +5,8 @@ import pytest
 from src.risk import (
     historical_es,
     historical_var,
+    horizon_returns,
+    monte_carlo_returns,
     parametric_es,
     parametric_var,
     portfolio_returns,
@@ -37,3 +39,20 @@ def test_portfolio_returns_weights_checked():
     assert result.tolist() == pytest.approx([0.02, 0.01])
     with pytest.raises(ValueError):
         portfolio_returns(df, {"A": 0.6, "B": 0.6})
+
+
+def test_horizon_returns_compounding():
+    r = pd.Series([0.01, 0.02, -0.01])
+    h = horizon_returns(r, 2)
+    assert h.iloc[0] == pytest.approx(1.01 * 1.02 - 1.0)
+    assert h.iloc[1] == pytest.approx(1.02 * 0.99 - 1.0)
+
+def test_monte_carlo_var_close_to_parametric_for_one_day():
+    rng = np.random.default_rng(4)
+    cov = np.array([[1.0, 0.3], [0.3, 1.5]]) * 1e-4
+    data = rng.multivariate_normal([0.0003, 0.0002], cov, size=4000)
+    df = pd.DataFrame(data, columns=["A", "B"])
+    weights = {"A": 0.6, "B": 0.4}
+    port = portfolio_returns(df, weights)
+    sims = monte_carlo_returns(df, weights, horizon=1, n_sims=100_000, seed=0)
+    assert historical_var(sims, 0.95) == pytest.approx(parametric_var(port, 0.95), rel=0.08)

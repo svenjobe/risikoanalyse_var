@@ -37,3 +37,24 @@ def parametric_es(returns: pd.Series | np.ndarray, level: float) -> float:
     mu, sigma = arr.mean(), arr.std(ddof=1)
     z = norm.ppf(1.0 - level)
     return float(-mu + sigma * norm.pdf(z) / (1.0 - level))
+
+def horizon_returns(returns: pd.Series, horizon: int) -> pd.Series:
+    log_ret = np.log1p(returns)
+    return np.expm1(log_ret.rolling(horizon).sum()).dropna()
+
+
+def monte_carlo_returns(
+    returns: pd.DataFrame,
+    weights: dict[str, float],
+    horizon: int,
+    n_sims: int,
+    seed: int = 42,
+) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    w = pd.Series(weights).reindex(returns.columns).to_numpy()
+    mu = returns.mean().to_numpy()
+    cov = returns.cov().to_numpy()
+
+    draws = rng.multivariate_normal(mu, cov, size=(n_sims, horizon))
+    daily_port = draws @ w                                            
+    return np.prod(1.0 + daily_port, axis=1) - 1.0
