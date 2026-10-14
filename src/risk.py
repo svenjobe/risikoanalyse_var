@@ -75,3 +75,62 @@ def longest_underwater_days(returns: pd.Series) -> int:
         return 0
     groups = (~underwater).cumsum()
     return int(underwater.groupby(groups).sum().max())
+
+def rolling_var_backtest(returns: pd.Series, level: float, window: int) -> pd.DataFrame:
+    threshold = returns.rolling(window).quantile(1.0 - level).shift(1)
+    out = pd.DataFrame({"return": returns, "var": -threshold}).dropna()
+    out["exception"] = out["return"] < -out["var"]
+    return out
+
+
+def kupiec_pof(n_exceptions: int, n_obs: int, p: float) -> tuple[float, float]:
+    x, n = n_exceptions, n_obs
+    if n <= 0:
+        raise ValueError("n_obs muss positiv sein.")
+    pi_hat = x / n
+
+    def log_lik(prob: float) -> float:
+        term_ok = (n - x) * np.log(1.0 - prob) if n - x > 0 else 0.0
+        term_exc = x * np.log(prob) if x > 0 else 0.0
+        return term_ok + term_exc
+
+    lr = -2.0 * (log_lik(p) - log_lik(pi_hat))
+    return float(lr), float(chi2.sf(lr, df=1))
+
+def risk_summary(
+    returns: pd.DataFrame,
+    weights: dict[str, float],
+    levels: tuple[float, ...],
+    horizon: int,
+    n_sims: int,
+    seed: int,
+) -> pd.DataFrame:
+    port = portfolio_returns(returns, weights)
+    port_h = horizon_returns(port, horizon)
+    sims = monte_carlo_returns(returns, weights, horizon, n_sims, seed)
+    sims_1d = monte_carlo_returns(returns, weights, 1, n_sims, seed)
+
+    rows = []
+    for level in levels:
+        rows.append({
+            "Methode": "Historisch",
+            "Konfidenz": level,
+            "VaR 1 Tag": historical_var(port, level),
+            "ES 1 Tag": historical_es(port, level),
+            f"VaR {horizon} Tage": historical_var(port_h, level),
+        })
+        rows.append({
+            "Methode": "Parametrisch (Normal)",
+            "Konfidenz": level,
+            "VaR 1 Tag": parametric_var(port, level),
+            "ES 1 Tag": parametric_es(port, level),
+            f"VaR {horizon} Tage": parametric_var(port_h, level),
+        })
+        rows.append({
+            "Methode": "Monte-Carlo",
+            "Konfidenz": level,
+            "VaR 1 Tag": historical_var(sims_1d, level),
+            "ES 1 Tag": historical_es(sims_1d, level),
+            f"VaR {horizon} Tage": historical_var(sims, level),
+        })
+    return pd.DataFrame(rows)

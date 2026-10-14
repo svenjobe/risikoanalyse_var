@@ -12,7 +12,9 @@ from src.risk import (
     portfolio_returns,
     drawdown_series,
     max_drawdown,
-    longest_underwater_days
+    longest_underwater_days,
+    kupiec_pof,
+    rolling_var_backtest
 )
 
 
@@ -71,3 +73,26 @@ def test_drawdown_known_path():
 def test_longest_underwater_days():
     r = pd.Series([0.10, -0.05, 0.01, 0.01, 0.10])
     assert longest_underwater_days(r) == 3
+
+def test_kupiec_perfect_calibration():
+    lr, p_value = kupiec_pof(n_exceptions=25, n_obs=500, p=0.05)
+    assert lr == pytest.approx(0.0, abs=1e-9)
+    assert p_value == pytest.approx(1.0)
+
+
+def test_kupiec_rejects_too_many_exceptions():
+    _, p_value = kupiec_pof(n_exceptions=60, n_obs=500, p=0.05)
+    assert p_value < 0.01
+
+
+def test_kupiec_handles_zero_exceptions():
+    lr, p_value = kupiec_pof(n_exceptions=0, n_obs=500, p=0.01)
+    assert np.isfinite(lr) and 0.0 <= p_value <= 1.0
+
+
+def test_rolling_backtest_has_no_lookahead_and_reasonable_rate():
+    rng = np.random.default_rng(3)
+    r = pd.Series(rng.normal(0.0003, 0.01, 3000), index=pd.bdate_range("2015-01-01", periods=3000))
+    bt = rolling_var_backtest(r, 0.95, window=250)
+    assert bt["exception"].mean() == pytest.approx(0.05, abs=0.015)
+    assert bt.index[0] == r.index[250]
