@@ -17,8 +17,8 @@ START_DATE: date = END_DATE - timedelta(days=10 * 365)
 
 # Risikokennzahlen
 CONFIDENCE_LEVELS: tuple[float, ...] = (0.95, 0.99)
-HORIZON_DAYS: int = 10        # Haltedauer für den Mehrtages-VaR
-ROLLING_WINDOW: int = 250     # Fensterlänge (Handelstage) für den Backtest
+HORIZON_DAYS: int = 10        
+ROLLING_WINDOW: int = 250     
 
 # Monte-Carlo-Simulation
 N_SIMULATIONS: int = 20_000
