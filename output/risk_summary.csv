@@ -1,0 +1,7 @@
+Methode,Konfidenz,VaR 1 Tag,ES 1 Tag,VaR 10 Tage
+Historisch,95 %,1.16,1.79,3.41
+Parametrisch (Normal),95 %,1.22,1.54,3.4
+Monte-Carlo,95 %,1.22,1.53,3.5
+Historisch,99 %,1.97,3.12,6.11
+Parametrisch (Normal),99 %,1.74,2.0,4.98
+Monte-Carlo,99 %,1.71,1.95,4.98
